@@ -8,11 +8,17 @@
 package com.facebook.react.bridge;
 
 import androidx.annotation.Nullable;
-import androidx.core.util.Pools;
+import androidx.core.util.Pools.SimplePool;
 
 /** Implementation of Dynamic wrapping a ReadableArray. */
 public class DynamicFromArray implements Dynamic {
-  private static final Pools.SimplePool<DynamicFromArray> sPool = new Pools.SimplePool<>(10);
+  private static final ThreadLocal<SimplePool<DynamicFromArray>> sPool =
+      new ThreadLocal<SimplePool<DynamicFromArray>>() {
+        @Override
+        protected SimplePool<DynamicFromArray> initialValue() {
+          return new SimplePool<>(10);
+        }
+      };
 
   private @Nullable ReadableArray mArray;
   private int mIndex = -1;
@@ -21,7 +27,7 @@ public class DynamicFromArray implements Dynamic {
   private DynamicFromArray() {}
 
   public static DynamicFromArray create(ReadableArray array, int index) {
-    DynamicFromArray dynamic = sPool.acquire();
+    DynamicFromArray dynamic = sPool.get().acquire();
     if (dynamic == null) {
       dynamic = new DynamicFromArray();
     }
@@ -34,7 +40,7 @@ public class DynamicFromArray implements Dynamic {
   public void recycle() {
     mArray = null;
     mIndex = -1;
-    sPool.release(this);
+    sPool.get().release(this);
   }
 
   @Override
